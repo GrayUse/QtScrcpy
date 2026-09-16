@@ -42,15 +42,16 @@ jobs:
           fetch-depth: 0
           submodules: 'recursive'
 
-            # 編譯
+             # 編譯
       - name: Build MSVC x64
         shell: cmd
         env:
           ENV_VCVARSALL: ${{ env.vcvarsall-path }}
           ENV_QT_PATH: ${{ github.workspace }}/${{ env.qt-ver }}
         run: |
-          echo 3.3.3 > QtScrcpy\appversion
+          echo 3.3.3> QtScrcpy\appversion
           call "ci\win\build_for_win.bat" ${{ github.event.inputs.build_type }} x64
+
 
       # 打包
       - name: Package
