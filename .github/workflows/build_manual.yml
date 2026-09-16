@@ -1,0 +1,64 @@
+name: Build Windows x64 (Manual)
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: '建置類型'
+        required: true
+        default: 'Release'
+        type: choice
+        options:
+          - Release
+          - RelWithDebInfo
+jobs:
+  build:
+    name: Build Windows x64
+    runs-on: windows-2022
+    env:
+      vcvarsall-path: 'C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat'
+      vcinstall-path: 'C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\VC'
+      qt-ver: '5.15.2'
+      qt-arch: 'win64_msvc2019_64'
+      qt-arch-install: 'msvc2019_64'
+    steps:
+      - name: Cache Qt
+        id: cache-qt
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/${{ env.qt-ver }}/${{ env.qt-arch-install }}
+          key: ${{ runner.os }}/${{ env.qt-ver }}/${{ env.qt-arch }}
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4.1.1
+        with:
+          version: ${{ env.qt-ver }}
+          target: desktop
+          arch: ${{ env.qt-arch }}
+          cached: ${{ steps.cache-qt.outputs.cache-hit }}
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: 'recursive'
+          ref: dev
+      - name: Build MSVC x64
+        shell: cmd
+        env:
+          ENV_VCVARSALL: ${{ env.vcvarsall-path }}
+          ENV_QT_PATH: ${{ github.workspace }}/${{ env.qt-ver }}
+        run: |
+          call python ci\generate-version.py
+          call "ci\win\build_for_win.bat" ${{ github.event.inputs.build_type }} x64
+      - name: Package
+        shell: cmd
+        env:
+          ENV_VCVARSALL: ${{ env.vcvarsall-path }}
+          ENV_VCINSTALL: ${{ env.vcinstall-path }}
+          ENV_QT_PATH: ${{ github.workspace }}/${{ env.qt-ver }}
+        run: |
+          cmd.exe /c ci\win\publish_for_win.bat x64 ..\build\QtScrcpy-win-x64-custom
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: QtScrcpy-win-x64-custom
+          path: ci\build\QtScrcpy-win-x64-custom
+          retention-days: 7
